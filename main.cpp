@@ -10,7 +10,7 @@
 #include "logger.h"
 
 #include "mysighandler.h"
-
+#include "mixdatalistener.h"
 
 MySigHandler h;
 
@@ -45,19 +45,6 @@ int main(int argc, char *argv[])
     signal(SIGTERM, handleSig);
     signal(SIGINT, handleSig);
     QObject::connect(&h, &MySigHandler::willStopApp, &a, &QCoreApplication::quit);
-
-    if(argc ==2)
-    {
-        Logger << "BtcOrder Start with " << argv[1];
-       // BtcOrder inst( std::stoi(argv[1]));
-        qDebug() << "after cons BtcOrder ";
-        return  a.exec();
-    }
-    else
-    {
-     //   BtcOrder inst;
-        qDebug() << "after cons BtcOrder ";
-        return  a.exec();
-    }
-
+    MixDataListener inst;
+    return  a.exec();
 }

@@ -110,7 +110,7 @@ void MixDataListener::resetFile()
     }
     currentFileSize = 0;
 
-    std::string fileName = currentDateTime() + ".bin";
+    std::string fileName = currentDateTimeOrg() + ".bin";
     currentFile.open(fileName, std::ios_base::out | std::ios_base::binary);
     qDebug() << "OutputFile is " << QString(fileName.c_str());
     if(!currentFile)
@@ -260,7 +260,6 @@ void MixDataListener::processBiAnData(const QString &symbol, const QString &mess
             auto askdepth = asks[i].toArray();
             d.price = askdepth[0].toString().toDouble();
             d.vol = askdepth[1].toString().toDouble();
-         qDebug()  <<  "-->[A:" << d.price << ":"<< d.vol << "]";
             currentFile.write((char*)&d, sizeof(Depth));
         }
 
@@ -270,7 +269,6 @@ void MixDataListener::processBiAnData(const QString &symbol, const QString &mess
             auto biddepth = bids[i].toArray();
             d.price = biddepth[0].toString().toDouble();
             d.vol = biddepth[1].toString().toDouble();
-             qDebug()  <<  "-->[B:" << d.price << ":"<< d.vol << "]";
             currentFile.write((char*)&d, sizeof(Depth));
         }
 
