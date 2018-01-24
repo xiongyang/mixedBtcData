@@ -28,6 +28,11 @@ unsigned long long getCurrentTimeMsec();
 uint32_t getMarketTickType(const QStringRef s);
 uint32_t getDepthTickType(const QStringRef s, uint8_t exch = exchange_huobi);
 
+char getSymbolChar(const QString& symbol);
+uint16_t getSymbolId(const QString& channel);
+uint32_t getOkExDepthTickType(uint16_t id);
+uint16_t makeSymbol(char c1, char c2);
+
 // 2-->100 3-->1000
 inline double myround(double s, double p)
 {

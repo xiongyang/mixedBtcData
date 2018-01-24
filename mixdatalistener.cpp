@@ -15,14 +15,22 @@
 
 MixDataListener::MixDataListener(QObject *parent) : QObject(parent)
 {
-    _wsBTC = new QWebSocket();
-    connect(_wsBTC, &QWebSocket::connected, this, &MixDataListener::onWsBtcConnected);
-    connect(_wsBTC, &QWebSocket::disconnected, this, &MixDataListener::onWsBtcDisconnected);
-    connect(_wsBTC, &QWebSocket::binaryMessageReceived, this, &MixDataListener::WsBtcBinaryMessageReceived);
+    _sockHuobi = new QWebSocket();
+    connect(_sockHuobi, &QWebSocket::connected, this, &MixDataListener::onWsBtcConnected);
+    connect(_sockHuobi, &QWebSocket::disconnected, this, &MixDataListener::onWsBtcDisconnected);
+    connect(_sockHuobi, &QWebSocket::binaryMessageReceived, this, &MixDataListener::WsBtcBinaryMessageReceived);
+
+
+    sockOkex = new QWebSocket();
+    connect(sockOkex, &QWebSocket::connected, this, &MixDataListener::onOkexConnect);
+    connect(sockOkex, &QWebSocket::disconnected, this, &MixDataListener::onOkexDisconnect);
+    connect(sockOkex, &QWebSocket::textMessageReceived, this, &MixDataListener::onReceiveOkexMessage);
+
 
     resetFile();
 
     QTimer::singleShot(2000, this, &MixDataListener::doConnectToHuoBi);
+    QTimer::singleShot(2010, this, &MixDataListener::doConnectToOkex);
 
     QTimer* checkHBConnectTimer = new QTimer(this);
     connect(checkHBConnectTimer, &QTimer::timeout, this, &MixDataListener::checkConnect);
@@ -36,12 +44,15 @@ void MixDataListener::onWsBtcConnected()
 {
     isHuoBiConnected = true;
     doSubsribceHuoBi();
+    Logger << "onWsBtcConnected";
+
 }
 
 void MixDataListener::onWsBtcDisconnected()
 {
     isHuoBiConnected = false;
     QTimer::singleShot(2000, this, &MixDataListener::doConnectToHuoBi);
+    Logger << "onWsBtcDisconnected";
 }
 
 void MixDataListener::WsBtcBinaryMessageReceived(const QByteArray &message)
@@ -99,7 +110,39 @@ void MixDataListener::WsBtcBinaryMessageReceived(const QByteArray &message)
 
         return;
     }
+}
 
+void MixDataListener::onOkexConnect()
+{
+    isOkexConnected = true;
+
+    Logger << "okExConnected";
+    doSubscribeOkex();
+}
+
+void MixDataListener::onOkexDisconnect()
+{
+    Logger << "onOkexDisconnect";
+    isOkexConnected = false;
+    QTimer::singleShot(2000, this, &MixDataListener::doConnectToOkex);
+}
+
+void MixDataListener::onReceiveOkexMessage(const QString &message)
+{
+    QJsonParseError jsonError;
+    QJsonDocument jsonDoc = QJsonDocument::fromJson(message.toLatin1(), &jsonError);
+
+    if(jsonError.error != QJsonParseError::NoError) return;
+
+    if(!jsonDoc.isArray()) return;
+
+    QJsonValueRef jsonObjRef = jsonDoc.array()[0];
+    QJsonObject jsonObj = jsonObjRef.toObject();
+    QString channel = jsonObj["channel"].toString();
+    if(channel.contains("depth_20"))
+    {
+        processOkexDepths(jsonObj, channel);
+    }
 }
 
 void MixDataListener::resetFile()
@@ -134,6 +177,115 @@ void MixDataListener::doSubsribceHuoBi()
     doSubscribeFormatHuoBi(ethmarkets,"market.", "eth.depth.step0");
 }
 
+void MixDataListener::doSubsribeOkEx(const std::string &symbol1, const std::string &symbol2)
+{
+    QJsonObject json;
+    std::string symbol = symbol1 + "_" + symbol2;
+    QString channel =  QString("ok_sub_spot_") + symbol.c_str() +  "_depth_20";
+    json.insert("event", "addChannel");
+    json.insert("channel", channel);
+    json.insert("binary", "0");
+    QJsonDocument jsonDoc;
+    jsonDoc.setObject(json);
+    QByteArray ba = jsonDoc.toJson(QJsonDocument::Compact);
+    QString jsonStr(ba);
+    qDebug() <<  "DoSubscribe " << jsonStr;
+    sockOkex->sendTextMessage(jsonStr);
+}
+
+void MixDataListener::doSubscribeFormatOkex(std::vector<std::string> firstSymbols, const std::string &secondSymbol)
+{
+
+    for(auto& each : firstSymbols)
+    {
+           doSubsribeOkEx(each, secondSymbol);
+    }
+}
+
+void MixDataListener::doSubscribeOkex()
+{
+    std::vector<std::string>   usdtmarkets{"btc", "bch","eth", "ltc", "xrp", "dash", "etc", "eos", "zec", "omg"};
+    std::vector<std::string>   btcmarkets{"bch", "eth", "ltc", "xrp", "dash", "etc", "eos", "zec", "omg"};
+    std::vector<std::string>   ethmarkets{ "eos", "omg"};
+
+    doSubscribeFormatOkex(usdtmarkets, "usdt");
+    doSubscribeFormatOkex(btcmarkets,"btc");
+    doSubscribeFormatOkex(ethmarkets,"eth");
+
+}
+
+void MixDataListener::sendOkexHeartbeat()
+{
+    QJsonObject json;
+    json.insert("event", "ping");
+    QJsonDocument jsonDoc;
+    jsonDoc.setObject(json);
+    QByteArray ba = jsonDoc.toJson(QJsonDocument::Compact);
+    QString jsonStr(ba);
+  //  qDebug() <<  "sendHeartBeat " << jsonStr;
+    sockOkex->sendTextMessage(jsonStr);
+}
+
+void MixDataListener::processOkexDepths(const QJsonObject &obj, QString channel)
+{
+      uint16_t symbolid =getSymbolId(channel);
+      uint32_t type = getOkExDepthTickType(symbolid);
+
+    //  qDebug() << obj;
+
+
+      DepthTick   tick;
+      tick.ts =  getCurrentTimeMsec();
+
+
+      const QJsonObject& tickObject = obj;
+      QJsonObject dataObj = obj["data"].toObject();
+
+      QJsonArray bids = dataObj["bids"].toArray();
+      QJsonArray asks = dataObj["asks"].toArray();
+
+
+
+                            //  qDebug() << ask;
+      tick.askDepthsSize = asks.size();
+      tick.bidDepthsSize = bids.size();
+
+
+      uint32_t totalSize = sizeof(DepthTick) + sizeof(Depth) *  (tick.askDepthsSize  + tick.bidDepthsSize);
+      TickHeader   header{type, totalSize};
+      currentFile.write((char*)&header, sizeof(TickHeader));
+      currentFile.write((char*)&tick, sizeof(DepthTick));
+
+
+      for(int i = 0;  i != asks.size(); ++i)
+      {
+          QJsonArray ask =  asks[i].toArray();
+          Depth d;
+          d.price =   ask[0].toString().toDouble();
+          d.vol =  ask[1].toString().toDouble();
+        //  qDebug() << "ask" <<  "-->[A:" << d.price << ":"<< d.vol << "]";
+          currentFile.write((char*)&d, sizeof(Depth));
+      }
+
+      for(int i = 0;  i != bids.size(); ++i)
+      {
+          QJsonArray bid =  bids[i].toArray();
+          Depth d;
+          d.price =   bid[0].toDouble();
+          d.vol =  bid[1].toDouble();
+         // qDebug() << "bid" <<  "-->[B:" << d.price << ":"<< d.vol << "]";
+          currentFile.write((char*)&d, sizeof(Depth));
+      }
+
+      currentFileSize +=  (sizeof(TickHeader) + totalSize);
+
+      if(currentFileSize > maxFileSize)
+      {
+          resetFile();
+      }
+
+}
+
 std::string MixDataListener::genSubscribeID()
 {
     std::string id_str = "id" + std::to_string(subscribeID++);
@@ -146,7 +298,7 @@ void MixDataListener::processHeartbeat(const QJsonObject &jsonObj)
     QJsonObject jsonPong;
     jsonPong.insert("pong", jsonObj.value("ping"));
     QJsonDocument docPong(jsonPong);
-    _wsBTC->sendTextMessage(QString(docPong.toJson(QJsonDocument::Compact)));
+    _sockHuobi->sendTextMessage(QString(docPong.toJson(QJsonDocument::Compact)));
 }
 
 void MixDataListener::processMarketTick(QVector<QStringRef> parts, QJsonObject jsonObj)
@@ -178,13 +330,13 @@ void MixDataListener::processMarketTick(QVector<QStringRef> parts, QJsonObject j
     }
 }
 
-void MixDataListener::processDepthTick(QJsonObject jsonObj, QVector<QStringRef> parts)
+void MixDataListener::processDepthTick(const QJsonObject& jsonObj, QVector<QStringRef> parts)
 {
     uint32_t type = getDepthTickType(parts[1]);
 
     DepthTick   tick;
     QJsonObject tickObject = jsonObj["tick"].toObject();
-    tick.ts = uint64_t(tickObject["ts"].toDouble());
+    tick.ts = getCurrentTimeMsec();
     tick.index = uint64_t(tickObject["version"].toDouble());
 
     QJsonArray bids = tickObject["bids"].toArray();
@@ -356,7 +508,7 @@ void MixDataListener::doSubscribeHuoBi(const char* subscribeTopic)
     QString jsonStr(ba);
     qDebug() <<  "DoSubscribe " << jsonStr;
     Logger <<  "DoSubscribe " << jsonStr.toStdString();
-    _wsBTC->sendTextMessage(jsonStr);
+    _sockHuobi->sendTextMessage(jsonStr);
 }
 
 
@@ -378,13 +530,31 @@ void MixDataListener::doConnectToHuoBi()
         return;
     }
 
-    _wsBTC->close();
+    _sockHuobi->close();
     QTimer::singleShot(100, [=](){
         qDebug() << " doConnectToHuoBi" ;
         Logger << " doConnectToHuoBi ";
         QUrl url("wss://api.huobi.pro/ws");
-        _wsBTC->open(url);
+        _sockHuobi->open(url);
 
+    });
+}
+
+void MixDataListener::doConnectToOkex()
+{
+    Logger << "ConnectToOkex ";
+    if(isOkexConnected)
+    {
+        Logger << "ConnectToOkex is connected so ignore the connect request";
+        return;
+    }
+
+    sockOkex->close();
+    QTimer::singleShot(100, [=](){
+        qDebug() << " doConnectToOkex" ;
+        Logger << " doConnectToOkex ";
+        QUrl url("wss://real.okex.com:10441/websocket");
+        sockOkex->open(url);
     });
 }
 
@@ -392,6 +562,9 @@ void MixDataListener::checkConnect()
 {
     if(!isHuoBiConnected)
         QTimer::singleShot(2000, this, &MixDataListener::doConnectToHuoBi);
+
+    if(!isOkexConnected)
+         QTimer::singleShot(2000, this, &MixDataListener::doConnectToOkex);
 
     for(auto& each : biAnStatus)
     {

@@ -87,7 +87,7 @@ const std::string makeTime(time_t t)
     // for more information about date/time format
 
     //    2018-01-06T14%3A52%3A59
-    strftime(buf, sizeof(buf), "%Y%m%dT%H:%M:%S", &tstruct);
+    strftime(buf, sizeof(buf), "%Y%m%dT%H%M%S", &tstruct);
     return buf;
 }
 
@@ -207,5 +207,41 @@ uint32_t getDepthTickType(const QStringRef s, uint8_t exch )
     ret.type = getMarketTickType(s);
     ret.types.dataType = Type_DepthTick;
     ret.types.exchange = exch;
+    return ret.type;
+}
+char getSymbolChar(const QString& symbol)
+{
+    if(symbol == "usdt") return symbol_USDT;
+    if(symbol == "btc") return symbol_BTC;
+    if(symbol == "bch") return symbol_BCH;
+    if(symbol == "eth") return symbol_ETH;
+    if(symbol == "ltc") return symbol_LTC;
+    if(symbol == "xrp") return symbol_XRP;
+    if(symbol == "dash") return symbol_DASH;
+    if(symbol == "etc") return symbol_ETC;
+    if(symbol == "eos") return symbol_EOS;
+    if(symbol == "zec") return symbol_ZEC;
+    if(symbol == "omg") return symbol_OMG;
+
+    return symbol_INVALID;
+}
+
+uint16_t makeSymbol(char c1, char c2)
+{
+    return c1 + c2 * 256;
+}
+
+uint16_t getSymbolId(const QString& channel)
+{
+    QStringList l = channel.split("_");
+    return makeSymbol( getSymbolChar( l.at(3)) ,  getSymbolChar( l.at(4)) );
+}
+
+uint32_t getOkExDepthTickType(uint16_t id)
+{
+    typeUnion ret;
+    ret.type = id;
+    ret.types.dataType = Type_DepthTick;
+    ret.types.exchange = exchange_okex;
     return ret.type;
 }

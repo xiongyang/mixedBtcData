@@ -35,18 +35,33 @@ public slots:
    void onWsBtcDisconnected();
    void WsBtcBinaryMessageReceived(const QByteArray &message);
 
+
+   void onOkexConnect();
+   void onOkexDisconnect();
+   void onReceiveOkexMessage(const QString& msg);
+
 private:
      void resetFile();
      void doConnectToHuoBi();
+     void doConnectToOkex();
      void checkConnect();
 
      void doSubscribeFormatHuoBi(std::vector<std::string> usdtmarkets, const std::string& prefix, const std::string& tail);
      void doSubscribeHuoBi(const char* subscribeTopic);
      void doSubsribceHuoBi();
+
      std::string genSubscribeID();
      void processHeartbeat(const QJsonObject& obj);
      void processMarketTick(QVector<QStringRef> parts, QJsonObject jsonObj);
-     void processDepthTick(QJsonObject jsonObj, QVector<QStringRef> parts);
+     void processDepthTick(const QJsonObject& jsonObj, QVector<QStringRef> parts);
+
+
+
+     void doSubsribeOkEx(const std::string& symbol1, const std::string& symbol2);
+     void doSubscribeFormatOkex(std::vector<std::string> firstSymbols, const std::string &secondSymbol);
+     void doSubscribeOkex();
+     void sendOkexHeartbeat();
+     void processOkexDepths(const QJsonObject& obj, QString channel);
 
 
 private slots:
@@ -63,9 +78,12 @@ private:
 
 
 private:
-     QWebSocket * _wsBTC;
+     QWebSocket * _sockHuobi;
      bool         isHuoBiConnected{false};
      int          subscribeID{1};
+
+     QWebSocket* sockOkex;
+     bool         isOkexConnected{false};
 
      std::ofstream currentFile;
      int64_t       currentFileSize{0};

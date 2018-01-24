@@ -18,9 +18,11 @@ static const char symbol_ETC = 7;
 static const char symbol_EOS = 8;
 static const char symbol_ZEC = 9;
 static const char symbol_OMG = 10;
+static const char symbol_INVALID = 255;
 
 constexpr uint8_t exchange_huobi = 0;
 constexpr uint8_t exchange_bian = 1;
+constexpr uint8_t exchange_okex = 2;
 
 
 struct typeStruct
