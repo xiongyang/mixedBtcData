@@ -38,6 +38,10 @@ MixDataListener::MixDataListener(QObject *parent) : QObject(parent)
 
 
     QTimer::singleShot(2000, this, &MixDataListener::subscribeAllBiAn);
+
+    QTimer* okex_heartbeat_timer = new QTimer(this);
+    connect(okex_heartbeat_timer, &QTimer::timeout, this, &MixDataListener::sendOkexHeartbeat);
+    okex_heartbeat_timer->start(30000);
 }
 
 void MixDataListener::onWsBtcConnected()
@@ -138,6 +142,7 @@ void MixDataListener::onReceiveOkexMessage(const QString &message)
 
     QJsonValueRef jsonObjRef = jsonDoc.array()[0];
     QJsonObject jsonObj = jsonObjRef.toObject();
+    if(!jsonObj.contains("channel")) return;
     QString channel = jsonObj["channel"].toString();
     if(channel.contains("depth_20"))
     {
