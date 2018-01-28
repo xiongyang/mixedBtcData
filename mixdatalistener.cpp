@@ -141,6 +141,11 @@ void MixDataListener::onReceiveOkexMessage(const QString &message)
     if(!jsonDoc.isArray()) return;
 
     QJsonValueRef jsonObjRef = jsonDoc.array()[0];
+    if(!jsonObjRef.isObject())
+    {
+        Logger << "Receive Invalid JsonValue " << jsonObjRef.toString();
+        return;
+    }
     QJsonObject jsonObj = jsonObjRef.toObject();
     if(!jsonObj.contains("channel")) return;
     QString channel = jsonObj["channel"].toString();
@@ -569,7 +574,7 @@ void MixDataListener::checkConnect()
         QTimer::singleShot(2000, this, &MixDataListener::doConnectToHuoBi);
 
     if(!isOkexConnected)
-         QTimer::singleShot(2000, this, &MixDataListener::doConnectToOkex);
+         QTimer::singleShot(3000, this, &MixDataListener::doConnectToOkex);
 
     for(auto& each : biAnStatus)
     {
