@@ -143,7 +143,7 @@ void MixDataListener::onReceiveOkexMessage(const QString &message)
     QJsonValueRef jsonObjRef = jsonDoc.array()[0];
     if(!jsonObjRef.isObject())
     {
-        Logger << "Receive Invalid JsonValue " << jsonObjRef.toString();
+        Logger << "Receive Invalid JsonValue " <<message.toStdString();
         return;
     }
     QJsonObject jsonObj = jsonObjRef.toObject();
