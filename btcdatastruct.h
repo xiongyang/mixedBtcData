@@ -24,6 +24,7 @@ constexpr uint8_t exchange_huobi = 0;
 constexpr uint8_t exchange_bian = 1;
 constexpr uint8_t exchange_okex = 2;
 
+#pragma pack(push,1)
 
 struct typeStruct
 {
@@ -113,5 +114,6 @@ struct SubscribeData
     char marketDataType;
 };
 
+#pragma pack(pop)
 
 #endif // BTCDATASTRUCT_H
