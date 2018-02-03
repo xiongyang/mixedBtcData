@@ -3,9 +3,9 @@
 
 #include <QString>
 
-const char Type_DepthTick = 'D';
-const char Type_TradeTick = 'T';
-const char Type_MarketTick = 'M';
+const char TickType_Depth = 'D';
+const char TickType_Trade = 'T';
+const char TickType_Market = 'M';
 
 static const char symbol_USDT = 0;
 static const char symbol_BTC = 1;
@@ -23,6 +23,7 @@ static const char symbol_INVALID = 255;
 constexpr uint8_t exchange_huobi = 0;
 constexpr uint8_t exchange_bian = 1;
 constexpr uint8_t exchange_okex = 2;
+constexpr uint8_t exchange_bitfinex = 3;
 
 #pragma pack(push,1)
 

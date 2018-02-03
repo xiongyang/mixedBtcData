@@ -26,16 +26,25 @@ MixDataListener::MixDataListener(QObject *parent) : QObject(parent)
     connect(sockOkex, &QWebSocket::disconnected, this, &MixDataListener::onOkexDisconnect);
     connect(sockOkex, &QWebSocket::textMessageReceived, this, &MixDataListener::onReceiveOkexMessage);
 
+    sockBit = new QWebSocket();
+    connect(sockBit, &QWebSocket::connected, this, &MixDataListener::onBitConnect);
+    connect(sockBit, &QWebSocket::disconnected, this, &MixDataListener::onBitDisconnect);
+    connect(sockBit, &QWebSocket::textMessageReceived, this, &MixDataListener::onBitReceiveMessage);
+
+    QTimer* t = new QTimer();
+    connect(t, &QTimer::timeout, this,  &MixDataListener::printCount);
+    t->start(60000);
+
 
     resetFile();
 
-    QTimer::singleShot(2000, this, &MixDataListener::doConnectToHuoBi);
-    QTimer::singleShot(2010, this, &MixDataListener::doConnectToOkex);
 
     QTimer* checkHBConnectTimer = new QTimer(this);
     connect(checkHBConnectTimer, &QTimer::timeout, this, &MixDataListener::checkConnect);
     checkHBConnectTimer->start(30000);
 
+    //for first connect
+     QTimer::singleShot(1000, this, &MixDataListener::checkConnect);
 
     QTimer::singleShot(2000, this, &MixDataListener::subscribeAllBiAn);
 
@@ -153,6 +162,35 @@ void MixDataListener::onReceiveOkexMessage(const QString &message)
     {
         processOkexDepths(jsonObj, channel);
     }
+    else
+    {
+        count++;
+        qDebug() << message;
+    }
+}
+
+void MixDataListener::onBitConnect()
+{
+    qDebug() << "BitFinex Connected";
+
+    subscribeBitFinex();
+}
+
+void MixDataListener::onBitDisconnect()
+{
+    qDebug() << "BitFinex Disconnect";
+}
+
+void MixDataListener::onBitReceiveMessage(const QString& msg)
+{
+    qDebug() << "BitFinex " << msg;
+    count ++;
+}
+
+void MixDataListener::printCount()
+{
+    qDebug() << "============== LastMin Count ==========  " << count;
+    count =0;
 }
 
 void MixDataListener::resetFile()
@@ -221,6 +259,22 @@ void MixDataListener::doSubscribeOkex()
     doSubscribeFormatOkex(usdtmarkets, "usdt");
     doSubscribeFormatOkex(btcmarkets,"btc");
     doSubscribeFormatOkex(ethmarkets,"eth");
+
+
+    {
+        QJsonObject json;
+        std::string symbol = "btc_usdt";
+        QString channel =  QString("ok_sub_spot_") + symbol.c_str() +  "_deals";
+        json.insert("event", "addChannel");
+        json.insert("channel", channel);
+        json.insert("binary", "0");
+        QJsonDocument jsonDoc;
+        jsonDoc.setObject(json);
+        QByteArray ba = jsonDoc.toJson(QJsonDocument::Compact);
+        QString jsonStr(ba);
+        qDebug() <<  "DoSubscribe " << jsonStr;
+        sockOkex->sendTextMessage(jsonStr);
+    }
 
 }
 
@@ -568,6 +622,24 @@ void MixDataListener::doConnectToOkex()
     });
 }
 
+void MixDataListener::doConnectToBit()
+{
+    Logger << "doConnectToBit out ";
+    if(isBitFinexConnected)
+    {
+        Logger << "ConnectToBit is connected so ignore the connect request";
+        return;
+    }
+
+    sockBit->close();
+    QTimer::singleShot(100, [=](){
+        qDebug() << " doConnectToBit inner" ;
+        Logger << " doConnectToBit inner";
+        QUrl url("wss://api.bitfinex.com/ws/2");
+        sockBit->open(url);
+    });
+}
+
 void MixDataListener::checkConnect()
 {
     if(!isHuoBiConnected)
@@ -575,6 +647,9 @@ void MixDataListener::checkConnect()
 
     if(!isOkexConnected)
          QTimer::singleShot(3000, this, &MixDataListener::doConnectToOkex);
+
+    if(!isOkexConnected)
+        QTimer::singleShot(3500, this, &MixDataListener::doConnectToBit);
 
     for(auto& each : biAnStatus)
     {
@@ -587,4 +662,39 @@ void MixDataListener::checkConnect()
             );
         }
     }
+}
+
+void MixDataListener::subscribeBitFinex()
+{
+
+//    {
+//        QJsonObject json;
+//        json.insert("event", "subscribe");
+//        json.insert("channel",  "trades");
+//        json.insert("symbol", "tBTCUSD");
+//        QJsonDocument jsonDoc;
+//        jsonDoc.setObject(json);
+//        QByteArray ba = jsonDoc.toJson(QJsonDocument::Compact);
+//        QString jsonStr(ba);
+//        qDebug() <<  "subscribeBitFinex " << jsonStr;
+//        Logger <<  "subscribeBitFinex " << jsonStr.toStdString();
+//        sockBit->sendTextMessage(jsonStr);
+//    }
+
+
+//    {
+//        QJsonObject json;
+//        json.insert("event", "subscribe");
+//        json.insert("channel",  "book");
+//        json.insert("symbol", "tBTCUSD");
+//        QJsonDocument jsonDoc;
+//        jsonDoc.setObject(json);
+//        QByteArray ba = jsonDoc.toJson(QJsonDocument::Compact);
+//        QString jsonStr(ba);
+//        qDebug() <<  "subscribeBitFinex " << jsonStr;
+//        Logger <<  "subscribeBitFinex " << jsonStr.toStdString();
+//        sockBit->sendTextMessage(jsonStr);
+//    }
+
+
 }

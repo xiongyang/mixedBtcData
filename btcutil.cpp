@@ -180,7 +180,7 @@ uint32_t getMarketTickType(const QStringRef s)
     typeUnion ret;
     char& firstSymbol = ret.types.symbol1;
     char& secondSymbol = ret.types.symbol2;
-    ret.types.dataType = Type_MarketTick;
+    ret.types.dataType = TickType_Market;
     ret.types.exchange = exchange_huobi;
 
     if(s.startsWith("btc")) firstSymbol = symbol_BTC;
@@ -205,7 +205,7 @@ uint32_t getDepthTickType(const QStringRef s, uint8_t exch )
 {
     typeUnion ret;
     ret.type = getMarketTickType(s);
-    ret.types.dataType = Type_DepthTick;
+    ret.types.dataType = TickType_Depth;
     ret.types.exchange = exch;
     return ret.type;
 }
@@ -241,7 +241,7 @@ uint32_t getOkExDepthTickType(uint16_t id)
 {
     typeUnion ret;
     ret.type = id;
-    ret.types.dataType = Type_DepthTick;
+    ret.types.dataType = TickType_Depth;
     ret.types.exchange = exchange_okex;
     return ret.type;
 }

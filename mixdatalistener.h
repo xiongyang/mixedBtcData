@@ -40,11 +40,21 @@ public slots:
    void onOkexDisconnect();
    void onReceiveOkexMessage(const QString& msg);
 
+
+   void onBitConnect();
+   void onBitDisconnect();
+   void onBitReceiveMessage(const QString& msg);
+
+   void printCount();
+
 private:
      void resetFile();
      void doConnectToHuoBi();
      void doConnectToOkex();
+     void doConnectToBit();
      void checkConnect();
+
+     void subscribeBitFinex();
 
      void doSubscribeFormatHuoBi(std::vector<std::string> usdtmarkets, const std::string& prefix, const std::string& tail);
      void doSubscribeHuoBi(const char* subscribeTopic);
@@ -85,6 +95,9 @@ private:
      QWebSocket* sockOkex;
      bool         isOkexConnected{false};
 
+     QWebSocket* sockBit;
+     bool         isBitFinexConnected{false};
+
      std::ofstream currentFile;
      int64_t       currentFileSize{0};
      static constexpr int64_t maxFileSize = 3.9 * 1024 * 1024 * 1024;
@@ -92,6 +105,9 @@ private:
      //bi an
      QMap<QString, QWebSocket*>  subscribed;
      std::map<std::string, bool> biAnStatus;
+
+
+     int count {0};
 };
 
 #endif // MIXDATALISTENER_H
